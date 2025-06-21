@@ -11,18 +11,19 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const urlParams = new URLSearchParams(window.location.search),
-      userKey = urlParams.get("key"),
-      masterKey = "ABCD1234",
-      isLeader = userKey === masterKey;
+const urlParams = new URLSearchParams(window.location.search);
+const userKey = urlParams.get("key");
+const masterKey = "ABCD1234";
+const isLeader = userKey === masterKey;
 
-let teams = [], scores = [], currentTeamIndex = 0,
-    opened = new Array(50).fill(false), lockedIndexes = new Set(),
-    itemPool = [], currentRoundScore = 0,
-    turnData = { numbers: new Set(), colors: new Set() },
-    gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"],
-    revealedValues = [];
-
+let teams = [], scores = [], currentTeamIndex = 0;
+let opened = Array(50).fill(false);
+let lockedIndexes = new Set();
+let itemPool = [];
+let currentRoundScore = 0;
+let revealedValues = Array(50).fill(null);
+let turnData = { numbers: new Set(), colors: new Set() };
+const gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"];
 const qs = id => document.getElementById(id);
 
 qs("go-home").onclick =
@@ -111,9 +112,8 @@ function onCellClick(e) {
 
   opened[index] = true;
   const item = itemPool.shift();
-  let number = null, color = null, reset = false;
-
   revealedValues[index] = item;
+  let number = null, color = null, reset = false;
 
   if (item === "💣") {
     cell.textContent = item;
@@ -161,25 +161,6 @@ function onCellClick(e) {
   syncToFirebase();
 }
 
-function renderBoardState() {
-  document.querySelectorAll(".cell").forEach((cell, index) => {
-    if (opened[index]) {
-      const value = revealedValues?.[index] ?? index + 1;
-      cell.textContent = value;
-      cell.style.backgroundColor = lockedIndexes.has(index) ? "#2b2b4d" : "#ccc";
-      cell.style.color = "#e2e2e2";
-      cell.style.opacity = lockedIndexes.has(index) ? "0.55" : "1";
-      cell.style.pointerEvents = "none";
-    } else {
-      cell.textContent = index + 1;
-      cell.style.backgroundColor = "#3b3b5d";
-      cell.style.color = "#e2e2e2";
-      cell.style.opacity = "1";
-      cell.style.pointerEvents = "auto";
-    }
-  });
-}
-
 function syncToFirebase() {
   const gameData = {
     teams,
@@ -188,7 +169,7 @@ function syncToFirebase() {
     currentRoundScore,
     opened,
     locked: Array.from(lockedIndexes),
-    revealedValues: revealedValues
+    revealedValues
   };
   db.ref("boom_live_game").set(gameData);
 }
@@ -234,6 +215,23 @@ function updateScoreBoard() {
   });
 }
 
+function renderBoardState() {
+  document.querySelectorAll(".cell").forEach((cell, index) => {
+    const value = revealedValues[index];
+    if (value) {
+      cell.textContent = value;
+      if (value === "💣" || value === "x2" || value === "x3") {
+        cell.style.backgroundColor = "#fff";
+        cell.style.color = "#000";
+      } else {
+        const color = gameColors[index % gameColors.length];
+        cell.style.backgroundColor = color;
+        cell.style.color = "#1f1f3a";
+      }
+    }
+  });
+}
+
 function showResults() {
   qs("game-screen").style.display = "none";
   qs("result-screen").style.display = "block";
@@ -250,11 +248,12 @@ function showResults() {
 
 function goToHome() {
   teams = []; scores = [];
-  opened = new Array(50).fill(false); lockedIndexes.clear();
-  itemPool = []; currentRoundScore = 0;
+  opened = Array(50).fill(false);
+  lockedIndexes.clear();
+  itemPool = [];
+  revealedValues = Array(50).fill(null);
+  currentRoundScore = 0;
   resetTurnData();
-  revealedValues = [];
-
   qs("setup-screen").style.display = "block";
   qs("game-screen").style.display = "none";
   qs("result-screen").style.display = "none";
@@ -268,7 +267,6 @@ function goToHome() {
   qs("team-count-section").style.display = "block";
 }
 
-// بث مباشر للمشاهد
 if (!isLeader) {
   db.ref("boom_live_game").on("value", snapshot => {
     const data = snapshot.val();
@@ -279,9 +277,9 @@ if (!isLeader) {
     currentRoundScore = data.currentRoundScore;
     opened = data.opened;
     lockedIndexes = new Set(data.locked);
-    revealedValues = data.revealedValues || [];
+    revealedValues = data.revealedValues || Array(50).fill(null);
 
-    if (!qs("game-screen").style.display || qs("setup-screen").style.display !== "none") {
+    if (qs("setup-screen").style.display !== "none") {
       qs("setup-screen").style.display = "none";
       qs("game-screen").style.display = "block";
     }
@@ -290,3 +288,4 @@ if (!isLeader) {
     updateScoreBoard();
   });
 }
+
