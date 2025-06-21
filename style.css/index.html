@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>BOOM!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div id="setup-screen">
+  <h1>🎮 BOOM!</h1>
+  <div id="team-count-section">
+    <label for="team-count">عدد الفرق:</label>
+    <input type="number" id="team-count" min="2" max="6" value="2" />
+    <button id="next-button">التالي</button>
+  </div>
+  <div id="team-inputs"></div>
+  <button id="start-game" style="display:none;">🚀 لتسس قو؟</button>
+  <button id="back-to-home" style="display:none;">🏠 الرجوع للرئيسية</button>
+</div>
+
+<div id="game-screen" style="display:none;">
+  <h1>💥 يلا ننفجر؟ </h1>
+  <div id="score-board" class="score-board"></div>
+  <button id="nextTurn">  تغيير الدور  </button>
+  <div id="board" class="board"></div>
+  <button id="in-game-home" style="display:none;">🏠 الرجوع للرئيسية</button>
+</div>
+
+<div id="result-screen" style="display:none;">
+  <h2>النتيجة</h2>
+  <div id="final-results"></div>
+  <button id="go-home">🔁 إعادة اللعب</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
