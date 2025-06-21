@@ -69,7 +69,7 @@ function startGame() {
   updateScoreBoard();
   resetTurnData();
   currentRoundScore = 0;
-  syncToFirebase(); // بث مباشر
+  syncToFirebase();
 }
 
 function createItemPool() {
@@ -99,7 +99,7 @@ function setupBoard() {
     currentTeamIndex = (currentTeamIndex + 1) % teams.length;
     resetTurnData();
     updateScoreBoard();
-    syncToFirebase(); // تحديث بث
+    syncToFirebase();
   };
 }
 
@@ -152,11 +152,29 @@ function onCellClick(e) {
       currentTeamIndex = (currentTeamIndex + 1) % teams.length;
       resetTurnData();
       updateScoreBoard();
-      syncToFirebase(); // تحديث بث
+      syncToFirebase();
     }, 1000);
   }
 
-  syncToFirebase(); // تحديث مباشر بعد كل نقرة
+  syncToFirebase();
+}
+
+function renderBoardState() {
+  document.querySelectorAll(".cell").forEach((cell, index) => {
+    if (opened[index]) {
+      cell.textContent = index + 1;
+      cell.style.backgroundColor = lockedIndexes.has(index) ? "#2b2b4d" : "#ccc";
+      cell.style.color = "#e2e2e2";
+      cell.style.opacity = lockedIndexes.has(index) ? "0.55" : "1";
+      cell.style.pointerEvents = "none";
+    } else {
+      cell.textContent = index + 1;
+      cell.style.backgroundColor = "#3b3b5d";
+      cell.style.color = "#e2e2e2";
+      cell.style.opacity = "1";
+      cell.style.pointerEvents = "auto";
+    }
+  });
 }
 
 function syncToFirebase() {
@@ -245,4 +263,26 @@ function goToHome() {
   qs("in-game-home").style.display = "none";
   qs("back-to-home").style.display = "none";
   qs("team-count-section").style.display = "block";
+}
+
+// مشاهدة البث للمستخدمين غير القائد
+if (!isLeader) {
+  db.ref("boom_live_game").on("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+    teams = data.teams;
+    scores = data.scores;
+    currentTeamIndex = data.currentTeamIndex;
+    currentRoundScore = data.currentRoundScore;
+    opened = data.opened;
+    lockedIndexes = new Set(data.locked);
+
+    if (!qs("game-screen").style.display || qs("setup-screen").style.display !== "none") {
+      qs("setup-screen").style.display = "none";
+      qs("game-screen").style.display = "block";
+    }
+
+    renderBoardState();
+    updateScoreBoard();
+  });
 }
