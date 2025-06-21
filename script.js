@@ -11,24 +11,21 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const urlParams = new URLSearchParams(window.location.search);
-const userKey = urlParams.get("key");
-const masterKey = "ABCD1234";
-const isLeader = userKey === masterKey;
+const urlParams = new URLSearchParams(window.location.search),
+      userKey = urlParams.get("key"),
+      masterKey = "ABCD1234",
+      isLeader = userKey === masterKey;
 
-let teams = [], scores = [], currentTeamIndex = 0;
-let opened = Array(50).fill(false);
-let lockedIndexes = new Set();
-let itemPool = [];
-let currentRoundScore = 0;
-let revealedValues = Array(50).fill(null);
-let turnData = { numbers: new Set(), colors: new Set() };
-const gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"];
+let teams = [], scores = [], currentTeamIndex = 0,
+    opened = Array(50).fill(false), locked = new Set(),
+    itemPool = [], revealedValues = Array(50).fill(""),
+    currentRoundScore = 0, gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"],
+    turnData = { numbers: new Set(), colors: new Set() };
+
 const qs = id => document.getElementById(id);
 
-qs("go-home").onclick =
-qs("in-game-home").onclick =
-qs("back-to-home").onclick = goToHome;
+// التبديل بين الشاشات
+qs("go-home").onclick = qs("in-game-home").onclick = qs("back-to-home").onclick = goToHome;
 
 qs("next-button").onclick = () => {
   qs("team-count-section").style.display = "none";
@@ -37,13 +34,13 @@ qs("next-button").onclick = () => {
 };
 
 function generateTeamInputs() {
-  const count = parseInt(qs("team-count").value), container = qs("team-inputs");
+  const count = parseInt(qs("team-count").value);
+  const container = qs("team-inputs");
   container.innerHTML = "";
   for (let i = 0; i < count; i++) {
     const input = document.createElement("input");
     input.placeholder = `اسم الفريق ${i + 1}`;
     input.id = `team-name-${i}`;
-    input.style.margin = "5px";
     container.appendChild(input);
   }
   if (isLeader) qs("start-game").style.display = "inline-block";
@@ -65,58 +62,49 @@ function startGame() {
   qs("setup-screen").style.display = "none";
   qs("game-screen").style.display = "block";
   qs("in-game-home").style.display = "inline-block";
-  createItemPool();
-  setupBoard();
+  generateItems();
+  renderBoard();
   updateScoreBoard();
-  resetTurnData();
-  currentRoundScore = 0;
-  syncToFirebase();
+  syncGame();
 }
 
-function createItemPool() {
+function generateItems() {
   itemPool = [];
   for (let i = 0; i < 3; i++) itemPool.push("💣");
-  for (let i = 0; i < 2; i++) itemPool.push("x2", "x3");
-  for (let i = 0; i < 43; i++) itemPool.push(Math.floor(Math.random() * 9 + 1));
+  itemPool.push("x2", "x3");
+  for (let i = 0; i < 45; i++) itemPool.push(Math.floor(Math.random() * 9 + 1));
   itemPool.sort(() => Math.random() - 0.5);
 }
 
-function setupBoard() {
+function renderBoard() {
   const board = qs("board");
   board.innerHTML = "";
   for (let i = 0; i < 50; i++) {
     const cell = document.createElement("div");
     cell.className = "cell";
-    cell.textContent = i + 1;
     cell.dataset.index = i;
+    cell.textContent = i + 1;
     board.appendChild(cell);
   }
-  board.addEventListener("click", onCellClick);
-  qs("nextTurn").onclick = () => {
-    if (!isLeader) return;
-    lockOpenedCells();
-    scores[currentTeamIndex] += currentRoundScore;
-    currentRoundScore = 0;
-    currentTeamIndex = (currentTeamIndex + 1) % teams.length;
-    resetTurnData();
-    updateScoreBoard();
-    syncToFirebase();
-  };
+  board.onclick = onCellClick;
+  qs("nextTurn").onclick = nextTurn;
 }
 
 function onCellClick(e) {
+  if (!isLeader) return;
   const cell = e.target;
-  if (!cell.classList.contains("cell") || !isLeader) return;
+  if (!cell.classList.contains("cell")) return;
   const index = +cell.dataset.index;
-  if (opened[index] || lockedIndexes.has(index)) return;
+  if (opened[index] || locked.has(index)) return;
 
-  opened[index] = true;
   const item = itemPool.shift();
+  opened[index] = true;
   revealedValues[index] = item;
+
   let number = null, color = null, reset = false;
 
   if (item === "💣") {
-    cell.textContent = item;
+    cell.textContent = "💣";
     cell.style.backgroundColor = "#fff";
     cell.style.color = "#000";
     currentRoundScore = 0;
@@ -125,7 +113,7 @@ function onCellClick(e) {
     cell.textContent = item;
     cell.style.backgroundColor = "#fff";
     cell.style.color = "#000";
-    currentRoundScore *= item === "x2" ? 2 : 3;
+    currentRoundScore *= (item === "x2") ? 2 : 3;
   } else {
     number = item;
     color = gameColors[Math.floor(Math.random() * gameColors.length)];
@@ -138,69 +126,36 @@ function onCellClick(e) {
   if (number !== null && turnData.numbers.has(number)) reset = true;
   if (color !== null && turnData.colors.has(color)) reset = true;
 
-  if (number !== null) turnData.numbers.add(number);
-  if (color !== null) turnData.colors.add(color);
+  if (number) turnData.numbers.add(number);
+  if (color) turnData.colors.add(color);
 
   updateScoreBoard();
+  syncGame();
 
-  if (opened.every(Boolean)) {
-    showResults();
-  } else if (reset) {
-    disableBoardTemporarily();
-    setTimeout(() => {
-      lockOpenedCells();
-      scores[currentTeamIndex] += currentRoundScore;
-      currentRoundScore = 0;
-      currentTeamIndex = (currentTeamIndex + 1) % teams.length;
-      resetTurnData();
-      updateScoreBoard();
-      syncToFirebase();
-    }, 1000);
+  if (reset) {
+    setTimeout(nextTurn, 1000);
   }
-
-  syncToFirebase();
 }
 
-function syncToFirebase() {
-  const gameData = {
-    teams,
-    scores,
-    currentTeamIndex,
-    currentRoundScore,
-    opened,
-    locked: Array.from(lockedIndexes),
-    revealedValues
-  };
-  db.ref("boom_live_game").set(gameData);
-}
-
-function disableBoardTemporarily() {
-  document.querySelectorAll(".cell").forEach(cell => cell.style.pointerEvents = "none");
+function nextTurn() {
+  if (!isLeader) return;
+  lockOpenedCells();
+  scores[currentTeamIndex] += currentRoundScore;
+  currentRoundScore = 0;
+  currentTeamIndex = (currentTeamIndex + 1) % teams.length;
+  turnData = { numbers: new Set(), colors: new Set() };
+  updateScoreBoard();
+  syncGame();
 }
 
 function lockOpenedCells() {
-  document.querySelectorAll(".cell").forEach((cell, index) => {
-    if (opened[index] && !lockedIndexes.has(index)) {
-      lockedIndexes.add(index);
-      setTimeout(() => {
-        cell.textContent = index + 1;
-        cell.style.backgroundColor = "#2b2b4d";
-        cell.style.color = "#e2e2e2";
-        cell.style.opacity = "0.55";
-        cell.style.pointerEvents = "none";
-      }, 700);
+  document.querySelectorAll(".cell").forEach((cell, i) => {
+    if (opened[i] && !locked.has(i)) {
+      locked.add(i);
+      cell.style.opacity = "0.55";
+      cell.style.pointerEvents = "none";
     }
   });
-
-  setTimeout(() => {
-    document.querySelectorAll(".cell").forEach((cell, index) => {
-      if (!lockedIndexes.has(index)) cell.style.pointerEvents = "auto";
-    });
-  }, 710);
-}
-
-function resetTurnData() {
-  turnData = { numbers: new Set(), colors: new Set() };
 }
 
 function updateScoreBoard() {
@@ -210,82 +165,36 @@ function updateScoreBoard() {
     const div = document.createElement("div");
     div.className = "team" + (i === currentTeamIndex ? " active" : "");
     div.innerHTML = `${team}<br> 🔴 السكور: ${scores[i]}`;
-    if (i === currentTeamIndex) div.innerHTML += `<br> 🔵 سكور الجولة: ${currentRoundScore}`;
+    if (i === currentTeamIndex) div.innerHTML += `<br> 🔵 جولة: ${currentRoundScore}`;
     board.appendChild(div);
   });
 }
 
-function renderBoardState() {
-  document.querySelectorAll(".cell").forEach((cell, index) => {
-    const value = revealedValues[index];
-    if (value) {
-      cell.textContent = value;
-      if (value === "💣" || value === "x2" || value === "x3") {
-        cell.style.backgroundColor = "#fff";
-        cell.style.color = "#000";
-      } else {
-        const color = gameColors[index % gameColors.length];
-        cell.style.backgroundColor = color;
-        cell.style.color = "#1f1f3a";
-      }
-    }
-  });
-}
-
-function showResults() {
-  qs("game-screen").style.display = "none";
-  qs("result-screen").style.display = "block";
-  const sorted = teams.map((name, i) => ({ name, score: scores[i] }))
-                      .sort((a, b) => b.score - a.score);
-  const results = qs("final-results");
-  results.innerHTML = "";
-  sorted.forEach((team, i) => {
-    const div = document.createElement("div");
-    div.textContent = `${i + 1}. ${team.name} - ${team.score} نقطة`;
-    results.appendChild(div);
+function syncGame() {
+  db.ref("boom_live_game").set({
+    teams,
+    scores,
+    currentTeamIndex,
+    currentRoundScore,
+    opened,
+    locked: Array.from(locked),
+    revealedValues
   });
 }
 
 function goToHome() {
   teams = []; scores = [];
+  currentTeamIndex = 0;
   opened = Array(50).fill(false);
-  lockedIndexes.clear();
-  itemPool = [];
-  revealedValues = Array(50).fill(null);
+  locked.clear();
+  revealedValues = Array(50).fill("");
   currentRoundScore = 0;
-  resetTurnData();
+  turnData = { numbers: new Set(), colors: new Set() };
   qs("setup-screen").style.display = "block";
   qs("game-screen").style.display = "none";
   qs("result-screen").style.display = "none";
   qs("team-count").value = 2;
   qs("team-inputs").innerHTML = "";
   qs("start-game").style.display = "none";
-  qs("board").innerHTML = "";
-  qs("final-results").innerHTML = "";
-  qs("in-game-home").style.display = "none";
-  qs("back-to-home").style.display = "none";
-  qs("team-count-section").style.display = "block";
-}
-
-if (!isLeader) {
-  db.ref("boom_live_game").on("value", snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-    teams = data.teams;
-    scores = data.scores;
-    currentTeamIndex = data.currentTeamIndex;
-    currentRoundScore = data.currentRoundScore;
-    opened = data.opened;
-    lockedIndexes = new Set(data.locked);
-    revealedValues = data.revealedValues || Array(50).fill(null);
-
-    if (qs("setup-screen").style.display !== "none") {
-      qs("setup-screen").style.display = "none";
-      qs("game-screen").style.display = "block";
-    }
-
-    renderBoardState();
-    updateScoreBoard();
-  });
 }
 
