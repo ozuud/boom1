@@ -265,7 +265,7 @@ function goToHome() {
   qs("team-count-section").style.display = "block";
 }
 
-// مشاهدة البث للمستخدمين غير القائد
+// بث للمشاهدين
 if (!isLeader) {
   db.ref("boom_live_game").on("value", snapshot => {
     const data = snapshot.val();
