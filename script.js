@@ -11,7 +11,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// استخراج رمز اللاعب من الرابط
 const urlParams = new URLSearchParams(window.location.search),
       userKey = urlParams.get("key"),
       masterKey = "ABCD1234",
@@ -21,7 +20,8 @@ let teams = [], scores = [], currentTeamIndex = 0,
     opened = new Array(50).fill(false), lockedIndexes = new Set(),
     itemPool = [], currentRoundScore = 0,
     turnData = { numbers: new Set(), colors: new Set() },
-    gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"];
+    gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"],
+    revealedValues = [];
 
 const qs = id => document.getElementById(id);
 
@@ -113,6 +113,8 @@ function onCellClick(e) {
   const item = itemPool.shift();
   let number = null, color = null, reset = false;
 
+  revealedValues[index] = item;
+
   if (item === "💣") {
     cell.textContent = item;
     cell.style.backgroundColor = "#fff";
@@ -162,7 +164,8 @@ function onCellClick(e) {
 function renderBoardState() {
   document.querySelectorAll(".cell").forEach((cell, index) => {
     if (opened[index]) {
-      cell.textContent = index + 1;
+      const value = revealedValues?.[index] ?? index + 1;
+      cell.textContent = value;
       cell.style.backgroundColor = lockedIndexes.has(index) ? "#2b2b4d" : "#ccc";
       cell.style.color = "#e2e2e2";
       cell.style.opacity = lockedIndexes.has(index) ? "0.55" : "1";
@@ -185,6 +188,7 @@ function syncToFirebase() {
     currentRoundScore,
     opened,
     locked: Array.from(lockedIndexes),
+    revealedValues: revealedValues
   };
   db.ref("boom_live_game").set(gameData);
 }
@@ -233,12 +237,10 @@ function updateScoreBoard() {
 function showResults() {
   qs("game-screen").style.display = "none";
   qs("result-screen").style.display = "block";
-
   const sorted = teams.map((name, i) => ({ name, score: scores[i] }))
                       .sort((a, b) => b.score - a.score);
   const results = qs("final-results");
   results.innerHTML = "";
-
   sorted.forEach((team, i) => {
     const div = document.createElement("div");
     div.textContent = `${i + 1}. ${team.name} - ${team.score} نقطة`;
@@ -251,6 +253,7 @@ function goToHome() {
   opened = new Array(50).fill(false); lockedIndexes.clear();
   itemPool = []; currentRoundScore = 0;
   resetTurnData();
+  revealedValues = [];
 
   qs("setup-screen").style.display = "block";
   qs("game-screen").style.display = "none";
@@ -265,7 +268,7 @@ function goToHome() {
   qs("team-count-section").style.display = "block";
 }
 
-// بث للمشاهدين
+// بث مباشر للمشاهد
 if (!isLeader) {
   db.ref("boom_live_game").on("value", snapshot => {
     const data = snapshot.val();
@@ -276,6 +279,7 @@ if (!isLeader) {
     currentRoundScore = data.currentRoundScore;
     opened = data.opened;
     lockedIndexes = new Set(data.locked);
+    revealedValues = data.revealedValues || [];
 
     if (!qs("game-screen").style.display || qs("setup-screen").style.display !== "none") {
       qs("setup-screen").style.display = "none";
