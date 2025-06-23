@@ -7,7 +7,6 @@ const firebaseConfig = {
   messagingSenderId: "1234567890",
   appId: "1:1234567890:web:abcdefgh"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -17,16 +16,17 @@ const urlParams = new URLSearchParams(window.location.search),
       isLeader = userKey === masterKey;
 
 let teams = [], scores = [], currentTeamIndex = 0,
-    opened = Array(50).fill(false), locked = new Set(),
-    itemPool = [], revealedValues = Array(50).fill(""),
-    currentRoundScore = 0, gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"],
+    opened = Array(50).fill(false),
+    locked = new Set(),
+    revealedValues = Array(50).fill(""),
+    itemPool = [],
+    currentRoundScore = 0,
+    gameColors = ["#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#8d6e63"],
     turnData = { numbers: new Set(), colors: new Set() };
 
 const qs = id => document.getElementById(id);
 
-// التبديل بين الشاشات
 qs("go-home").onclick = qs("in-game-home").onclick = qs("back-to-home").onclick = goToHome;
-
 qs("next-button").onclick = () => {
   qs("team-count-section").style.display = "none";
   generateTeamInputs();
@@ -196,5 +196,86 @@ function goToHome() {
   qs("team-count").value = 2;
   qs("team-inputs").innerHTML = "";
   qs("start-game").style.display = "none";
+}
+
+// بث حي للمشاهدين
+if (!isLeader) {
+  db.ref("boom_live_game").on("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+    teams = data.teams;
+    scores = data.scores;
+    currentTeamIndex = data.currentTeamIndex;
+    currentRoundScore = data.currentRoundScore;
+    opened = data.opened;
+    locked = new Set(data.locked);
+    revealedValues = data.revealedValues;
+
+    if (!qs("game-screen").style.display || qs("setup-screen").style.display !== "none") {
+      qs("setup-screen").style.display = "none";
+      qs("game-screen").style.display = "block";
+    }
+
+    const board = qs("board");
+    if (board.children.length !== 50) {
+      board.innerHTML = "";
+      for (let i = 0; i < 50; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = i;
+        board.appendChild(cell);
+      }
+    }
+
+    document.querySelectorAll(".cell").forEach((cell, i) => {
+      if (opened[i]) {
+        const item = revealedValues[i];
+        cell.textContent = item || (i + 1);
+        cell.style.backgroundColor = locked.has(i) ? "#2b2b4d" : "#ccc";
+        cell.style.color = locked.has(i) ? "#aaa" : "#000";
+        cell.style.opacity = locked.has(i) ? "0.55" : "1";
+        cell.style.pointerEvents = "none";
+      } else {
+        cell.textContent = i + 1;
+        cell.style.backgroundColor = "#1f1f3a";
+        cell.style.color = "#fff";
+        cell.style.pointerEvents = "none";
+      }
+    });
+
+    updateScoreBoard();
+  });
+}
+                                                                                                                                                                                                                                                                                              board.appendChild(div);
+                                                                                                                                                                                                                                                                                                                                                        });
+                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                        function syncGame() {
+                                                                                                                                                                                                                                                                                                                                                          db.ref("boom_live_game").set({
+                                                                                                                                                                                                                                                                                                                                                              teams,
+                                                                                                                                                                                                                                                                                                                                                                  scores,
+                                                                                                                                                                                                                                                                                                                                                                      currentTeamIndex,
+                                                                                                                                                                                                                                                                                                                                                                          currentRoundScore,
+                                                                                                                                                                                                                                                                                                                                                                              opened,
+                                                                                                                                                                                                                                                                                                                                                                                  locked: Array.from(locked),
+                                                                                                                                                                                                                                                                                                                                                                                      revealedValues
+                                                                                                                                                                                                                                                                                                                                                                                        });
+                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                        function goToHome() {
+                                                                                                                                                                                                                                                                                                                                                                                          teams = []; scores = [];
+                                                                                                                                                                                                                                                                                                                                                                                            currentTeamIndex = 0;
+                                                                                                                                                                                                                                                                                                                                                                                              opened = Array(50).fill(false);
+                                                                                                                                                                                                                                                                                                                                                                                                locked.clear();
+                                                                                                                                                                                                                                                                                                                                                                                                  revealedValues = Array(50).fill("");
+                                                                                                                                                                                                                                                                                                                                                                                                    currentRoundScore = 0;
+                                                                                                                                                                                                                                                                                                                                                                                                      turnData = { numbers: new Set(), colors: new Set() };
+                                                                                                                                                                                                                                                                                                                                                                                                        qs("setup-screen").style.display = "block";
+                                                                                                                                                                                                                                                                                                                                                                                                          qs("game-screen").style.display = "none";
+                                                                                                                                                                                                                                                                                                                                                                                                            qs("result-screen").style.display = "none";
+                                                                                                                                                                                                                                                                                                                                                                                                              qs("team-count").value = 2;
+                                                                                                                                                                                                                                                                                                                                                                                                                qs("team-inputs").innerHTML = "";
+                                                                                                                                                                                                                                                                                                                                                                                                                  qs("start-game").style.display = "none";
+                                                                                                                                                                                                                                                                                                                                                                                                                  }
 }
 
