@@ -1,16 +1,23 @@
+// استيراد Firebase modules
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+// تكوين Firebase (غير القيم إلى القيم الخاصة بمشروعك)
 const firebaseConfig = {
   apiKey: "AIza....",
-  authDomain: "fawaz-211f3.firebaseapp.com",
-  databaseURL: "https://fawaz-211f3-default-rtdb.firebaseio.com",
-  projectId: "fawaz-211f3",
-  storageBucket: "fawaz-211f3.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdefgh"
+  authDomain: "boom-74f34.firebaseapp.com",
+  databaseURL: "https://boom-74f34-default-rtdb.firebaseio.com",
+  projectId: "boom-74f34",
+  storageBucket: "boom-74f34.appspot.com",
+  messagingSenderId: "332724250422",
+  appId: "1:332724250422:web:c1d429b892c462cab6b597"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// تهيئة التطبيق وقاعدة البيانات
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
+// تحديد اللاعب قائد أو مشاهد حسب المفتاح في الرابط
 const urlParams = new URLSearchParams(window.location.search),
       userKey = urlParams.get("key"),
       masterKey = "ABCD1234",
@@ -24,6 +31,7 @@ let teams = [], scores = [], currentTeamIndex = 0,
 
 const qs = id => document.getElementById(id);
 
+// تعيين أزرار العودة والذهاب
 qs("go-home").onclick =
 qs("in-game-home").onclick =
 qs("back-to-home").onclick = goToHome;
@@ -33,6 +41,7 @@ qs("next-button").onclick = () => {
   generateTeamInputs();
   qs("back-to-home").style.display = "inline-block";
 };
+
 function generateTeamInputs() {
   const count = parseInt(qs("team-count").value), container = qs("team-inputs");
   container.innerHTML = "";
@@ -67,8 +76,9 @@ function startGame() {
   updateScoreBoard();
   resetTurnData();
   currentRoundScore = 0;
-  syncToFirebase(); // بث مباشر
+  syncToFirebase();
 }
+
 function createItemPool() {
   itemPool = [];
   for (let i = 0; i < 3; i++) itemPool.push("💣");
@@ -96,9 +106,10 @@ function setupBoard() {
     currentTeamIndex = (currentTeamIndex + 1) % teams.length;
     resetTurnData();
     updateScoreBoard();
-    syncToFirebase(); // بث جديد
+    syncToFirebase();
   };
 }
+
 function onCellClick(e) {
   const cell = e.target;
   if (!cell.classList.contains("cell") || !isLeader) return;
@@ -154,6 +165,7 @@ function onCellClick(e) {
 
   syncToFirebase();
 }
+
 function syncToFirebase() {
   const revealedValues = opened.map((isOpen, i) =>
     isOpen ? document.querySelectorAll(".cell")[i].textContent : null
@@ -169,7 +181,7 @@ function syncToFirebase() {
     revealedValues
   };
 
-  db.ref("boom_live_game").set(gameData);
+  set(ref(db, "boom_live_game"), gameData);
 }
 
 function disableBoardTemporarily() {
@@ -200,6 +212,7 @@ function lockOpenedCells() {
 function resetTurnData() {
   turnData = { numbers: new Set(), colors: new Set() };
 }
+
 function updateScoreBoard() {
   const board = qs("score-board");
   board.innerHTML = "";
@@ -248,9 +261,11 @@ function goToHome() {
   qs("back-to-home").style.display = "none";
   qs("team-count-section").style.display = "block";
 }
-// ✅ إذا المستخدم "مشاهد" (وليس ليدر)، يعرض البث المباشر فقط
+
+// بث مباشر للمشاهدين
 if (!isLeader) {
-  db.ref("boom_live_game").on("value", snapshot => {
+  const gameRef = ref(db, "boom_live_game");
+  onValue(gameRef, (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
@@ -266,7 +281,6 @@ if (!isLeader) {
   });
 }
 
-// ✅ دالة عرض القيم داخل الخانات المفتوحة (للمشاهد)
 function renderOpenedCells(revealedValues) {
   const cells = document.querySelectorAll(".cell");
 
