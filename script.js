@@ -1,12 +1,11 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyCzn_AwCWxLwfxBX5Zk-7vcvTchBaTVRMg",
-  authDomain: "boom-74f34.firebaseapp.com",
-  databaseURL: "https://boom-74f34-default-rtdb.firebaseio.com",
-  projectId: "boom-74f34",
-  storageBucket: "boom-74f34.firebasestorage.app",
-  messagingSenderId: "332724250422",
-  appId: "1:332724250422:web:c1d429b892c462cab6b597",
-  measurementId: "G-G4MJQD41L9"
+  apiKey: "AIza....",
+  authDomain: "fawaz-211f3.firebaseapp.com",
+  databaseURL: "https://fawaz-211f3-default-rtdb.firebaseio.com",
+  projectId: "fawaz-211f3",
+  storageBucket: "fawaz-211f3.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdefgh"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -34,7 +33,6 @@ qs("next-button").onclick = () => {
   generateTeamInputs();
   qs("back-to-home").style.display = "inline-block";
 };
-
 function generateTeamInputs() {
   const count = parseInt(qs("team-count").value), container = qs("team-inputs");
   container.innerHTML = "";
@@ -69,9 +67,8 @@ function startGame() {
   updateScoreBoard();
   resetTurnData();
   currentRoundScore = 0;
-  syncToFirebase();
+  syncToFirebase(); // بث مباشر
 }
-
 function createItemPool() {
   itemPool = [];
   for (let i = 0; i < 3; i++) itemPool.push("💣");
@@ -99,10 +96,9 @@ function setupBoard() {
     currentTeamIndex = (currentTeamIndex + 1) % teams.length;
     resetTurnData();
     updateScoreBoard();
-    syncToFirebase();
+    syncToFirebase(); // بث جديد
   };
 }
-
 function onCellClick(e) {
   const cell = e.target;
   if (!cell.classList.contains("cell") || !isLeader) return;
@@ -158,7 +154,6 @@ function onCellClick(e) {
 
   syncToFirebase();
 }
-
 function syncToFirebase() {
   const revealedValues = opened.map((isOpen, i) =>
     isOpen ? document.querySelectorAll(".cell")[i].textContent : null
@@ -205,7 +200,6 @@ function lockOpenedCells() {
 function resetTurnData() {
   turnData = { numbers: new Set(), colors: new Set() };
 }
-
 function updateScoreBoard() {
   const board = qs("score-board");
   board.innerHTML = "";
@@ -254,7 +248,7 @@ function goToHome() {
   qs("back-to-home").style.display = "none";
   qs("team-count-section").style.display = "block";
 }
-
+// ✅ إذا المستخدم "مشاهد" (وليس ليدر)، يعرض البث المباشر فقط
 if (!isLeader) {
   db.ref("boom_live_game").on("value", snapshot => {
     const data = snapshot.val();
@@ -272,6 +266,7 @@ if (!isLeader) {
   });
 }
 
+// ✅ دالة عرض القيم داخل الخانات المفتوحة (للمشاهد)
 function renderOpenedCells(revealedValues) {
   const cells = document.querySelectorAll(".cell");
 
