@@ -1,3 +1,18 @@
+// ✅ ربط Firebase (compat version)
+firebase.initializeApp({
+  apiKey: "AIzaSyCzn_AwCWxLwfxBX5Zk-7vcvTchBaTVRMg",
+  authDomain: "boom-74f34.firebaseapp.com",
+  databaseURL: "https://boom-74f34-default-rtdb.firebaseio.com",
+  projectId: "boom-74f34",
+  storageBucket: "boom-74f34.firebasestorage.app",
+  messagingSenderId: "332724250422",
+  appId: "1:332724250422:web:c1d429b892c462cab6b597",
+  measurementId: "G-G4MJQD41L9"
+});
+
+const db = firebase.database();
+
+
 const firebaseConfig = {
   apiKey: "AIza....", // ← ضع مفتاحك الصحيح هنا
   authDomain: "fawaz-211f3.firebaseapp.com",
